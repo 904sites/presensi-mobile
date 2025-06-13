@@ -1,0 +1,6 @@
+Aplikasi Presensi
+
+1. Slicing UI (Halaman Login, Homepage, dll.)
+2. Siapkan model
+3. Share preference
+4. Koneksi API
