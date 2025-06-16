@@ -4,3 +4,7 @@ Aplikasi Presensi
 2. Siapkan model
 3. Share preference
 4. Koneksi API
+
+Packages
+- location
+- syncfusion_flutter_maps 
