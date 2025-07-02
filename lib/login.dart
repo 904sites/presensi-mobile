@@ -1,9 +1,11 @@
+// lib/login.dart
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:presensi/home.dart';
-import 'package:presensi/model/login_response.dart'; // Pastikan path ini benar
+import 'package:presensi/model/login_response.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -22,6 +24,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    // Cek otomatis saat aplikasi dibuka, apakah user sudah pernah login
     _checkLoginStatus();
   }
 
@@ -39,6 +42,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (token != null && token.isNotEmpty) {
       if (!mounted) return;
+      // Langsung ke HomePage jika sudah ada token
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) =>
@@ -66,8 +70,10 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    final url = Uri.parse(
-        'http://127.0.0.1:8000/api/login'); // Ubah jika bukan emulator
+    // PENTING: Ganti alamat IP ini
+    // 'http://10.0.2.2:8000' untuk Emulator Android
+    // 'http://<IP-LOKAL-KOMPUTER>:8000' untuk HP Fisik
+    final url = Uri.parse('http://127.0.0.1:8000/api/login');
 
     try {
       final response = await http.post(
@@ -82,9 +88,11 @@ class _LoginPageState extends State<LoginPage> {
         final data = jsonDecode(response.body);
         final loginResponse = LoginResponseModel.fromJson(data);
 
+        // Simpan data user
         await _saveUser(loginResponse.data.token, loginResponse.data.name);
 
         if (!mounted) return;
+        // Pindah ke HomePage dan kirim data user
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => HomePage(
