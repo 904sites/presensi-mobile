@@ -1,8 +1,3 @@
-// lib/model/login_response.dart
-
-// Model ini dibuat berdasarkan struktur respons JSON dari API login Anda.
-// Contoh JSON: { "success": true, "data": { "name": "...", "token": "..." } }
-
 class LoginResponseModel {
   final bool success;
   final Data data;
@@ -15,7 +10,6 @@ class LoginResponseModel {
   factory LoginResponseModel.fromJson(Map<String, dynamic> json) {
     return LoginResponseModel(
       success: json["success"],
-      // Mengambil objek 'data' dan mem-parsingnya menggunakan Data.fromJson
       data: Data.fromJson(json["data"]),
     );
   }

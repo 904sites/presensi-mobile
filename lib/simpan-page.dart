@@ -1,6 +1,11 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
+import 'package:presensi/model/save_presensi_response.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_maps/maps.dart';
+import 'package:http/http.dart' as myHttp;
 
 class SimpanPage extends StatefulWidget {
   const SimpanPage({super.key});
@@ -42,11 +47,57 @@ class _SimpanPageState extends State<SimpanPage> {
     return await location.getLocation();
   }
 
-  void _simpanPresensi() {
-    print("Tombol Simpan Presensi diklik!");
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Presensi berhasil disimpan (simulasi)")),
-    );
+  Future<void> savePresensi(double? latitude, double? longitude) async {
+    String baseUrl = "http://10.0.2.2:8000"; // untuk Android emulator
+    if (kIsWeb) {
+      baseUrl = "http://127.0.0.1:8000"; // untuk Flutter web
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token") ?? "";
+
+    try {
+      Map<String, String> body = {
+        "latitude": latitude.toString(),
+        "longitude": longitude.toString()
+      };
+
+      Map<String, String> headers = {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      };
+
+      final response = await myHttp.post(
+        Uri.parse("$baseUrl/api/save-presensi"),
+        body: body,
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final savePresensiResponseModel =
+            SavePresensiResponseModel.fromJson(json.decode(response.body));
+
+        if (savePresensiResponseModel.success) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('✅ Sukses menyimpan presensi')),
+          );
+          Navigator.pop(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(savePresensiResponseModel.message)),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Server error: ${response.body}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terjadi error: $e')),
+      );
+    }
   }
 
   @override
@@ -58,7 +109,7 @@ class _SimpanPageState extends State<SimpanPage> {
       ),
       body: FutureBuilder<LocationData?>(
         future: _locationFuture,
-        builder: (BuildContext context, AsyncSnapshot<LocationData?> snapshot) {
+        builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -79,46 +130,42 @@ class _SimpanPageState extends State<SimpanPage> {
             );
           }
 
-          final LocationData currentLocation = snapshot.data!;
+          final currentLocation = snapshot.data!;
 
-          return Stack(
-            children: [
-              Positioned.fill(
-                child: SfMaps(
-                  layers: [
-                    MapTileLayer(
-                      urlTemplate:
-                          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-                      initialFocalLatLng: MapLatLng(
-                        currentLocation.latitude!,
-                        currentLocation.longitude!,
+          return SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: SfMaps(
+                    layers: [
+                      MapTileLayer(
+                        urlTemplate:
+                            "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                        initialFocalLatLng: MapLatLng(
+                          currentLocation.latitude!,
+                          currentLocation.longitude!,
+                        ),
+                        initialZoomLevel: 15,
+                        initialMarkersCount: 1,
+                        markerBuilder: (context, index) {
+                          return MapMarker(
+                            latitude: currentLocation.latitude!,
+                            longitude: currentLocation.longitude!,
+                            child: const Icon(
+                              Icons.location_on,
+                              color: Colors.red,
+                              size: 40,
+                            ),
+                          );
+                        },
                       ),
-                      initialZoomLevel: 15,
-                      initialMarkersCount: 1,
-                      markerBuilder: (BuildContext context, int index) {
-                        return MapMarker(
-                          latitude: currentLocation.latitude!,
-                          longitude: currentLocation.longitude!,
-                          child: const Icon(
-                            Icons.location_on,
-                            color: Colors.red,
-                            size: 40,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  height: 180,
-                  width: double.infinity,
+                Container(
+                  padding: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(24)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.1),
@@ -128,38 +175,49 @@ class _SimpanPageState extends State<SimpanPage> {
                     ],
                   ),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _simpanPresensi,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 2,
+                      Text(
+                        "Lokasi Anda Saat Ini:",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Lat: ${currentLocation.latitude}, Long: ${currentLocation.longitude}",
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            savePresensi(
+                              currentLocation.latitude,
+                              currentLocation.longitude,
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text(
-                              "Simpan Presensi",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                          ),
+                          child: const Text(
+                            "Simpan Presensi",
+                            style: TextStyle(fontSize: 16),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),

@@ -70,9 +70,6 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    // PENTING: Ganti alamat IP ini
-    // 'http://10.0.2.2:8000' untuk Emulator Android
-    // 'http://<IP-LOKAL-KOMPUTER>:8000' untuk HP Fisik
     final url = Uri.parse('http://127.0.0.1:8000/api/login');
 
     try {
@@ -92,7 +89,6 @@ class _LoginPageState extends State<LoginPage> {
         await _saveUser(loginResponse.data.token, loginResponse.data.name);
 
         if (!mounted) return;
-        // Pindah ke HomePage dan kirim data user
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => HomePage(
